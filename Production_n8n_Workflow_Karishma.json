@@ -1,0 +1,228 @@
+{
+  "name": "Production Crypto Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/search/trending",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "trending",
+      "name": "Get Trending Coins",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst coins = $json.coins.slice(0,5);\nreturn coins.map(c => ({json:{\n id:c.item.id,\n name:c.item.name,\n symbol:c.item.symbol,\n score:c.item.score\n}}));\n"
+      },
+      "id": "transform",
+      "name": "Top 5 Coins",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.coingecko.com/api/v3/coins/{{$json.id}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "details",
+      "name": "Coin Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        950,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.market_data.price_change_percentage_24h}}",
+              "operation": "larger",
+              "value2": 5
+            }
+          ]
+        }
+      },
+      "id": "if",
+      "name": "IF > 5%",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "digest",
+              "value": "=\ud83d\ude80 {{$json.name}} ({{$json.symbol}}) moved {{$json.market_data.price_change_percentage_24h}}% in last 24h",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "digest",
+      "name": "Prepare Digest",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1450,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://discord.com/api/webhooks/REPLACE_WITH_YOUR_WEBHOOK",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"content\": $json.digest}"
+      },
+      "id": "discord",
+      "name": "Discord Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1700,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "error",
+              "value": "API request failed. Check CoinGecko availability.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "errorlog",
+      "name": "Error Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1450,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Trending Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Trending Coins": {
+      "main": [
+        [
+          {
+            "node": "Top 5 Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Top 5 Coins": {
+      "main": [
+        [
+          {
+            "node": "Coin Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coin Details": {
+      "main": [
+        [
+          {
+            "node": "IF > 5%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF > 5%": {
+      "main": [
+        [
+          {
+            "node": "Prepare Digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Digest": {
+      "main": [
+        [
+          {
+            "node": "Discord Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "versionId": "1"
+}
