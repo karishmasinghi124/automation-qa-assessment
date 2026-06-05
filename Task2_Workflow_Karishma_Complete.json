@@ -1,0 +1,184 @@
+{
+  "name": "Crypto Digest Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/search/trending",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Get Trending Coins",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const coins = $json.coins.slice(0,5); return coins.map(c=>({json:{id:c.item.id,name:c.item.name,symbol:c.item.symbol,score:c.item.score}}));"
+      },
+      "id": "3",
+      "name": "Top 5 Transform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.coingecko.com/api/v3/coins/{{$json.id}}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Coin Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        950,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.market_data.price_change_percentage_24h}}",
+              "operation": "larger",
+              "value2": 5
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF Gain > 5%",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "={{$json.name}} gained {{$json.market_data.price_change_percentage_24h}}% in 24h"
+      },
+      "id": "6",
+      "name": "Prepare Digest",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1450,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "notice": "Configure your Discord/Slack/Telegram webhook URL here"
+      },
+      "id": "7",
+      "name": "Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Trending Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Trending Coins": {
+      "main": [
+        [
+          {
+            "node": "Top 5 Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Top 5 Transform": {
+      "main": [
+        [
+          {
+            "node": "Coin Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coin Details": {
+      "main": [
+        [
+          {
+            "node": "IF Gain > 5%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Gain > 5%": {
+      "main": [
+        [
+          {
+            "node": "Prepare Digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Prepare Digest": {
+      "main": [
+        [
+          {
+            "node": "Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
