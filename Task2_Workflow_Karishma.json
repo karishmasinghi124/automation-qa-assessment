@@ -1,0 +1,33 @@
+{
+  "name": "Crypto Digest Workflow",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "schedule"
+    },
+    {
+      "name": "Trending API",
+      "type": "httpRequest"
+    },
+    {
+      "name": "Top5 Transform",
+      "type": "code"
+    },
+    {
+      "name": "Coin Details",
+      "type": "httpRequest"
+    },
+    {
+      "name": "IF Threshold",
+      "type": "if"
+    },
+    {
+      "name": "Discord Output",
+      "type": "webhook"
+    },
+    {
+      "name": "Error Handler",
+      "type": "errorTrigger"
+    }
+  ]
+}
